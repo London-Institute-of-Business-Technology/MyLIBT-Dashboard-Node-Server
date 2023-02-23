@@ -68,72 +68,72 @@ router.get('/invoice', async (req, res) => {
             memcached.get('refreshToken', function (err, data) {
                 console.log("refresh token from memcached :" + data);
                 var tmpRefreshToken = data != undefined ? data : refreshToken;
-                if (data != undefined) {
-                    return axios.post(url, {
-                        'grant_type': 'refresh_token',
-                        'refresh_token': tmpRefreshToken,
-                        'client_id': clientId,
-                        'client_secret': clientSecret
-                    },
-                        {
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded'
-                            }
-                        })
-                        .then(response => {
-                            if (response.status != 200) {
-                                console.log("Error occur while generating token " + response);
-                                res.send(response);
-                            }
-                            return response.data;
-                        })
-                        .then(data => {
-                            console.log("Token successfully generated :" + data.access_token)
-                            // need to update the memcache
-                            memcached.set('token', data.access_token, 1680, function (err) {
-                                if (err) {
-                                    console.log("cache updating failed :");
-                                };
-                            });
-                            memcached.set('refreshToken', data.refresh_token, 31536000, function (err) {
-                                if (err) {
-                                    console.log("cache updating failed :");
-                                };
-                            });
-
-                            token = data.access_token;
-
-                            console.log("Invoking xero invoices :" + email);
-                            axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
-                                headers: {
-                                    'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
-                                    'Authorization': `Bearer ${token}`,
-                                    'Access-Control-Allow-Origin': '*',
-                                }
-                            })
-                                .then(function (response) {
-                                    console.log(response.data.Contacts[0].ContactID);
-                                    axios.get(`https://api.xero.com/api.xro/2.0/Invoices?ContactIDs=${response.data.Contacts[0].ContactID}`, {
-                                        headers: {
-                                            'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
-                                            'Authorization': `Bearer ${token}`,
-                                            'Access-Control-Allow-Origin': '*',
-                                        }
-                                    })
-                                        .then(function (result) {
-                                            console.log(result);
-                                            res.send(JSON.stringify(result.data));
-                                        }).catch(function (err) {
-                                            console.log("Error occur while reading invoice :" + err);
-                                        })
-                                })
-                                .catch(function (error) {
-                                    console.log("Error occur while reading contacts :" + error);
-                                });
-                            //return res.send(data.access_token);
+                // if (data != undefined) {
+                return axios.post(url, {
+                    'grant_type': 'refresh_token',
+                    'refresh_token': tmpRefreshToken,
+                    'client_id': clientId,
+                    'client_secret': clientSecret
+                },
+                    {
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    })
+                    .then(response => {
+                        if (response.status != 200) {
+                            console.log("Error occur while generating token " + response);
+                            res.send(response);
+                        }
+                        return response.data;
+                    })
+                    .then(data => {
+                        console.log("Token successfully generated :" + data.access_token)
+                        // need to update the memcache
+                        memcached.set('token', data.access_token, 1680, function (err) {
+                            if (err) {
+                                console.log("cache updating failed :");
+                            };
+                        });
+                        memcached.set('refreshToken', data.refresh_token, 31536000, function (err) {
+                            if (err) {
+                                console.log("cache updating failed :");
+                            };
                         });
 
-                }
+                        token = data.access_token;
+
+                        console.log("Invoking xero invoices :" + email);
+                        axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
+                            headers: {
+                                'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
+                                'Authorization': `Bearer ${token}`,
+                                'Access-Control-Allow-Origin': '*',
+                            }
+                        })
+                            .then(function (response) {
+                                console.log(response.data.Contacts[0].ContactID);
+                                axios.get(`https://api.xero.com/api.xro/2.0/Invoices?ContactIDs=${response.data.Contacts[0].ContactID}`, {
+                                    headers: {
+                                        'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
+                                        'Authorization': `Bearer ${token}`,
+                                        'Access-Control-Allow-Origin': '*',
+                                    }
+                                })
+                                    .then(function (result) {
+                                        console.log(result);
+                                        res.send(JSON.stringify(result.data));
+                                    }).catch(function (err) {
+                                        console.log("Error occur while reading invoice :" + err);
+                                    })
+                            })
+                            .catch(function (error) {
+                                console.log("Error occur while reading contacts :" + error);
+                            });
+                        //return res.send(data.access_token);
+                    });
+
+                // }
             })
 
         }
