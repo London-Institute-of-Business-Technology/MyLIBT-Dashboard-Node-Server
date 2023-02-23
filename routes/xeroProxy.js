@@ -56,7 +56,7 @@ router.get('/invoice', async (req, res) => {
             console.log("Generating a token");
             const clientId = 'D417871336714E0B87F9918848596B39';
             const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
-            const refreshToken = 'XERc7yLeVK5tOyOqqIWKUbF_fE7t79GXHn0S7x9ROvQ';
+            const refreshToken = 'iwKAdZuulzaQAUsTkgczTD8_zCoDz9mwTpXvC3VnuSA';
             const url = 'https://identity.xero.com/connect/token';
 
             const body = new URLSearchParams({
