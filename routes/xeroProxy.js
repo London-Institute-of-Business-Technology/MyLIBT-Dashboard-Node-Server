@@ -48,6 +48,7 @@ const ACCESS_TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFDQUY4RTY2NzcyRDZEQzAyOEQ2Nz
 
 
 router.get('/invoice', async (req, res) => {
+    console.log('checking invoice')
     var token = '';
     const { email } = req.query;
     memcached.get('token', function (err, data) {
