@@ -137,6 +137,36 @@ router.get('/invoice', async (req, res) => {
             })
 
         }
+        else {
+            console.log("Invoking xero invoices :" + email);
+            axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
+                headers: {
+                    'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
+                    'Authorization': `Bearer ${token}`,
+                    'Access-Control-Allow-Origin': '*',
+                }
+            })
+                .then(function (response) {
+                    console.log(response.data.Contacts[0].ContactID);
+                    axios.get(`https://api.xero.com/api.xro/2.0/Invoices?ContactIDs=${response.data.Contacts[0].ContactID}`, {
+                        headers: {
+                            'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
+                            'Authorization': `Bearer ${token}`,
+                            'Access-Control-Allow-Origin': '*',
+                        }
+                    })
+                        .then(function (result) {
+                            console.log(result);
+                            res.send(JSON.stringify(result.data));
+                        }).catch(function (err) {
+                            console.log("Error occur while reading invoice :" + err);
+                        })
+                })
+                .catch(function (error) {
+                    console.log("Error occur while reading contacts :" + error);
+                });
+            //return res.send(data.access_token);
+        }
     });
 });
 
