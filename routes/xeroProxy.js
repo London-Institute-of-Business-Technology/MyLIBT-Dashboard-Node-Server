@@ -52,6 +52,7 @@ router.get('/invoice', async (req, res) => {
     const { email } = req.query;
     memcached.get('token', function (err, data) {
         console.log("Token in memcache : " + data);
+        token = data;
         if (data == undefined) {
             console.log("Generating a token");
             const clientId = 'D417871336714E0B87F9918848596B39';
