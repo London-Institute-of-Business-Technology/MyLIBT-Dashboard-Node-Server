@@ -8,7 +8,7 @@ const ACCESS_TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFDQUY4RTY2NzcyRDZEQzAyOEQ2Nz
 
 router.get('/invoice', async (req, res) => {
     var accessToken = '';
-    const refreshToken = '7KmieJDEXbgol7z6jpTKUFt-JoJDXvSBmK2IX5iBC6U';
+    let refreshToken = 'NB_GwbCIm5yqr0MUbnnXiN0N1y6MLTk_DaTMcHDFoJg';
     const url = 'https://identity.xero.com/connect/token';
     const clientId = 'D417871336714E0B87F9918848596B39';
     const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
@@ -60,7 +60,9 @@ router.get('/invoice', async (req, res) => {
         }else{
             // accessToken is null
             memcached.get('refreshToken', function (err, data) {
+                console.log("refresh token from memcached :"+data);
                 if(data != undefined && data != null){
+                    console.log("refreshToken from memcached :"+data);
                     refreshToken = data
                 }
                 return axios.post(url, {
@@ -74,21 +76,24 @@ router.get('/invoice', async (req, res) => {
                     }
                 )
                 .then(response => {
+                    console.log("Token generated :"+JSON.stringify(response.data));
                     if (response.status != 200) {
                         console.log("Error occur while generating token " + response);
                         res.send(response);
                     }
                     memcached.set('token', response.data.access_token, 1680, function (err) {
+                        console.log("Writing accessToken to memcached :"+response.data.access_token);
                         if (err) {
                             console.log("cache updating failed :");
                         };
                     });
-                    memcached.set('refreshToken', response.data.refresh_token, 31536000, function (err) {
+                    memcached.set('refreshToken', response.data.refresh_token, 4000, function (err) {
+                        console.log("Writing refreshToken to memcached :"+response.data.refresh_token);
                         if (err) {
                             console.log("cache updating failed :");
                         };
                     });
-                    accessToken = response.data;
+                    accessToken = response.data.access_token;
                     console.log("Invoking xero invoices :" + email);
                     axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
                         headers: {
@@ -160,108 +165,87 @@ router.get('/invoice', async (req, res) => {
 
 
 router.get('/paylink', async (req, res) => {
-
     res.set('Access-Control-Allow-Origin', '*');
     const { invoiceId } = req.query;
-
-    var token = '';
     const { email } = req.query;
+    var accessToken = '';
+    const refreshToken = '7KmieJDEXbgol7z6jpTKUFt-JoJDXvSBmK2IX5iBC6U';
+    const url = 'https://identity.xero.com/connect/token';
+    const clientId = 'D417871336714E0B87F9918848596B39';
+    const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
     memcached.get('token', function (err, data) {
         console.log("Token in memcache : " + data);
-        token = data;
-        if (data == undefined) {
-            console.log("Generating a token");
-            const clientId = 'D417871336714E0B87F9918848596B39';
-            const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
-            const refreshToken = 'VwMk29Lb2zNRR1zaLda3pFkASiSchod-lva8UDTnVQM';
-            const url = 'https://identity.xero.com/connect/token';
-
-            const body = new URLSearchParams({
-                'grant_type': 'refresh_token',
-                'refresh_token': refreshToken,
-                'client_id': clientId,
-                'client_secret': clientSecret
+        if(data != undefined && data != null){
+            accessToken = data;
+            console.log("Invoking xero invoices :" + email);
+            axios.get(`https://api.xero.com/api.xro/2.0/Invoices/${invoiceId}/OnlineInvoice`, {
+                headers: {
+                    'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Access-Control-Allow-Origin': '*',
+                }
+            })
+            .then(function (response) {
+                console.log(response.data);
+                res.send(JSON.stringify(response.data));
+            })
+            .catch(function (error) {
+                 console.log("Error occur while reading contacts :" + error);
             });
+        }else{
+            // accessToken is null
             memcached.get('refreshToken', function (err, data) {
-                console.log("refresh token from memcached :" + data);
-                var tmpRefreshToken = data != undefined ? data : refreshToken;
-                // if (data != undefined) {
+                if(data != undefined && data != null){
+                    refreshToken = data
+                }
                 return axios.post(url, {
                     'grant_type': 'refresh_token',
-                    'refresh_token': tmpRefreshToken,
+                    'refresh_token': refreshToken,
                     'client_id': clientId,
                     'client_secret': clientSecret
                 },
                     {
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        }
-                    })
-                    .then(response => {
-                        if (response.status != 200) {
-                            console.log("Error occur while generating token " + response.data);
-                            res.send(response);
-                        }
-                        return response.data;
-                    })
-                    .then(data => {
-                        console.log("Token successfully generated :" + data.access_token)
-                        // need to update the memcache
-                        memcached.set('token', data.access_token, 1680, function (err) {
-                            if (err) {
-                                console.log("cache updating failed :");
-                            };
-                        });
-                        memcached.set('refreshToken', data.refresh_token, 31536000, function (err) {
-                            if (err) {
-                                console.log("cache updating failed :");
-                            };
-                        });
-
-                        token = data.access_token;
-
-                        console.log("Invoking xero invoices :" + invoiceId);
-                        axios.get(`https://api.xero.com/api.xro/2.0/Invoices/${invoiceId}/OnlineInvoice`, {
-                            headers: {
-                                'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
-                                'Authorization': `Bearer ${token}`,
-                                'Access-Control-Allow-Origin': '*',
-                            }
-                        })
-                            .then(function (response) {
-                                console.log(response.data);
-                                res.send(JSON.stringify(response.data));
-                            })
-                            .catch(function (error) {
-                                console.log("Error occur while reading contacts :" + error);
-                            });
-                        //return res.send(data.access_token);
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                    }
+                )
+                .then(response => {
+                    if (response.status != 200) {
+                        console.log("Error occur while generating token " + response);
+                        res.send(response);
+                    }
+                    memcached.set('token', response.data.access_token, 1680, function (err) {
+                        if (err) {
+                            console.log("cache updating failed :");
+                        };
                     });
-
-                // }
-            })
-
-        }
-        else {
-            console.log("Invoking xero invoices :" + invoiceId);
-            axios.get(`https://api.xero.com/api.xro/2.0/Invoices/${invoiceId}/OnlineInvoice`, {
-                headers: {
-                    'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
-                    'Authorization': `Bearer ${token}`,
-                    'Access-Control-Allow-Origin': '*',
-                }
-            })
-                .then(function (response) {
-                    console.log(response.data);
-                    res.send(JSON.stringify(response.data));
+                    memcached.set('refreshToken', response.data.refresh_token, 31536000, function (err) {
+                        if (err) {
+                            console.log("cache updating failed :");
+                        };
+                    });
+                    accessToken = response.data;
+                    console.log("Invoking paylink :" + email);
+                    axios.get(`https://api.xero.com/api.xro/2.0/Invoices/${invoiceId}/OnlineInvoice`, {
+                        headers: {
+                            'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Access-Control-Allow-Origin': '*',
+                        }
+                    })
+                    .then(function (response) {
+                        console.log(response.data);
+                        res.send(JSON.stringify(response.data));
+                    })
+                    .catch(function (error) {
+                        console.log("Error occur while reading contacts :" + error);
+                    });
                 })
-                .catch(function (error) {
-                    console.log("Error occur while reading contacts :" + error);
-                });
-            //return res.send(data.access_token);
+                .catch(function(error){
+                    console.log("Error occur while generating token :" + error);
+                })
+            })
         }
-    });
-
+    })
 });
 
 module.exports = router;
