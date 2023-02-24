@@ -69,7 +69,7 @@ router.get('/invoice', async (req, res) => {
             memcached.get('refreshToken', function (err, data) {
                 console.log("refresh token from memcached :" + data);
                 var tmpRefreshToken = data != undefined ? data : refreshToken;
-                // if (data != undefined) {
+                console.log("########### refresh token ########### "+tmpRefreshToken);
                 return axios.post(url, {
                     'grant_type': 'refresh_token',
                     'refresh_token': tmpRefreshToken,
@@ -114,6 +114,14 @@ router.get('/invoice', async (req, res) => {
                         })
                             .then(function (response) {
                                 console.log(response.data.Contacts[0].ContactID);
+                                if(response == undefined && response == null ){
+                                    res.status =204
+                                    res.send(JSON.stringify({"message":"No Invoice/s available "}));
+
+                                } else{
+                                    res.status = 200 ;
+                                    res.send(JSON.stringify(result.data));
+                                } 
                                 axios.get(`https://api.xero.com/api.xro/2.0/Invoices?ContactIDs=${response.data.Contacts[0].ContactID}`, {
                                     headers: {
                                         'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
@@ -122,8 +130,16 @@ router.get('/invoice', async (req, res) => {
                                     }
                                 })
                                     .then(function (result) {
-                                        console.log(result);
-                                        res.send(JSON.stringify(result.data));
+                                        console.log(result.data);
+                                        if(result == undefined && result == null ){
+                                            res.status =204
+                                            res.send(JSON.stringify({"message":"No Contacts for request invoice"}));
+
+                                        } else{
+                                            res.status = 200 ;
+                                            res.send(JSON.stringify(result.data));
+                                        } 
+                                        
                                     }).catch(function (err) {
                                         console.log("Error occur while reading invoice :" + err);
                                     })
@@ -157,7 +173,7 @@ router.get('/invoice', async (req, res) => {
                         }
                     })
                         .then(function (result) {
-                            console.log(result);
+                            console.log(result.data);
                             res.send(JSON.stringify(result.data));
                         }).catch(function (err) {
                             console.log("Error occur while reading invoice :" + err);
@@ -232,7 +248,7 @@ router.get('/paylink', async (req, res) => {
                     })
                     .then(response => {
                         if (response.status != 200) {
-                            console.log("Error occur while generating token " + response);
+                            console.log("Error occur while generating token " + response.data);
                             res.send(response);
                         }
                         return response.data;
