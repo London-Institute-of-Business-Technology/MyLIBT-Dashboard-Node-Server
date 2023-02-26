@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 require('dotenv').config();
 var cors = require('cors');
 const app = express();
@@ -7,6 +8,8 @@ const axios = require('axios');
 var Memcached = require('memcached');
 var memcached = new Memcached();
 
+const mongoString = process.env.DATABASE_URL
+
 memcached.connect('localhost:11211', function (err, conn) {
     if (err) {
         console.log(conn.server, 'error while memcached connection!!');
@@ -14,6 +17,17 @@ memcached.connect('localhost:11211', function (err, conn) {
         console.log("memcache connected !")
     }
 });
+
+mongoose.connect(mongoString);
+const database = mongoose.connection
+
+database.on('error', (error) => {
+    console.log(error)
+})
+
+database.once('connected', () => {
+    console.log('Database Connected');
+})
 
 app.use(express.json());
 

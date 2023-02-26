@@ -3,22 +3,25 @@ const router = express.Router();
 const axios = require('axios');
 var Memcached = require('memcached');
 var memcached = new Memcached('localhost:11211');
+const TokenModel = require('../model/token');
 
 const ACCESS_TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjFDQUY4RTY2NzcyRDZEQzAyOEQ2NzI2RkQwMjYxNTgxNTcwRUZDMTkiLCJ0eXAiOiJKV1QiLCJ4NXQiOiJISy1PWm5jdGJjQW8xbkp2MENZVmdWY09fQmsifQ.eyJuYmYiOjE2NzcxNzA4MzcsImV4cCI6MTY3NzE3MjYzNywiaXNzIjoiaHR0cHM6Ly9pZGVudGl0eS54ZXJvLmNvbSIsImF1ZCI6Imh0dHBzOi8vaWRlbnRpdHkueGVyby5jb20vcmVzb3VyY2VzIiwiY2xpZW50X2lkIjoiRDQxNzg3MTMzNjcxNEUwQjg3Rjk5MTg4NDg1OTZCMzkiLCJzdWIiOiI5MmNiOWU5Y2EzMzQ1Yjg1YTIwMGE5NDMwYTk3ZjQyMSIsImF1dGhfdGltZSI6MTY3NzE2NDUyMSwieGVyb191c2VyaWQiOiI2NTRiYmZjMi04YTIyLTQzY2YtODA1MC1lNmZlMjJhY2RkMjkiLCJnbG9iYWxfc2Vzc2lvbl9pZCI6ImFlOTNkZmFlYmY4MjRlOTBhZGQ1YzVkZGIxOTBiY2Y2Iiwic2lkIjoiYWU5M2RmYWViZjgyNGU5MGFkZDVjNWRkYjE5MGJjZjYiLCJqdGkiOiJEQzIzRDkwQzk3OTVDM0UxREJDREFDMTE0NzFEMkZBNiIsImF1dGhlbnRpY2F0aW9uX2V2ZW50X2lkIjoiZmZkNGZiNzItODZiNS00OWQ3LWEzYmMtMTk0OTQ4OGEzY2IzIiwic2NvcGUiOlsiZW1haWwiLCJwcm9maWxlIiwib3BlbmlkIiwiYWNjb3VudGluZy50cmFuc2FjdGlvbnMiLCJhY2NvdW50aW5nLmNvbnRhY3RzIiwiYWNjb3VudGluZy5jb250YWN0cy5yZWFkIiwib2ZmbGluZV9hY2Nlc3MiXSwiYW1yIjpbInB3ZCJdfQ.YDjIfRdRwQ98QTUR7v9hqRyocBpEoyStt3AaV0tf1cUa24ZF2lRnITC-IALnp38TdZ5GfoStG7Fwa1AD-7oahiskpLLGrHxHWsEwOSZbOBAhuGfcGlGsKxorVlnhsgctbgQqWgUYS_y1MqBVHlSU618v3AKO_-ZwOfFbsmJwWLDkJisvBynwhp7ywjh3HFq1x3KI-Y6r9586Y_JtU0z4Xg15ebqwZFT97TE7UQQtZqbUucS14MIukLQG2bUnsQg-zA3HFyJnO1oHehz3OwAxvq1Mlmjn5YMjalu4dLvpQtOtdtLYV6cOwsM6cDFxgNyGE7XCq1Kdi0H75veHN0wmKA"
 
 router.get('/invoice', async (req, res) => {
+    let refreshToken ='';
     var accessToken = '';
-    let refreshToken = 'NB_GwbCIm5yqr0MUbnnXiN0N1y6MLTk_DaTMcHDFoJg';
+    var contactId ='';
+    const { email } = req.query;
+
     const url = 'https://identity.xero.com/connect/token';
     const clientId = 'D417871336714E0B87F9918848596B39';
     const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
-    var contactId ='';
-    const { email } = req.query;
+    
     memcached.get('token', function (err, data) {
-        console.log("Token in memcache : " + data);
+        console.log("Token in memcached : " + data);
         if(data != undefined && data != null){
             accessToken = data;
-            console.log("Invoking xero invoices :" + email);
+            console.log("Invoking CONTACTS api in XERO. user :" + email);
             axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
                 headers: {
                     'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
@@ -27,12 +30,12 @@ router.get('/invoice', async (req, res) => {
                     }
             })
             .then(function (response) {
-                // console.log(response.data.Contacts[0].ContactID);
                 if(response == undefined && response == null && response.data == undefined && response.data.Contacts[0] == undefined ){
                     res.status =204
-                    res.send(JSON.stringify({"message":"No Invoice/s available "}));
+                    res.send(JSON.stringify({"message":"No Contact/s available for user :"+email}));
                 } else{
                     contactId = response.data.Contacts[0].ContactID;
+                    console.log("Invoking INVOICE  api in XERO. user :" + email +" contactId :"+contactId);
                     axios.get(`https://api.xero.com/api.xro/2.0/Invoices?ContactIDs=${contactId}`, {
                         headers: {
                             'xero-tenant-id': '2eaa6688-d95e-4c8f-b76d-62fdf9fcd991',
@@ -58,13 +61,23 @@ router.get('/invoice', async (req, res) => {
                 console.log("Error occur while reading invoice :" + error);
             });
         }else{
-            // accessToken is null
-            memcached.get('refreshToken', function (err, data) {
-                console.log("refresh token from memcached :"+data);
+            memcached.get('refreshToken', async function (err, data) {
+                console.log("Extracting refresh_token from memcached :"+JSON.stringify(data));
                 if(data != undefined && data != null){
                     console.log("refreshToken from memcached :"+data);
                     refreshToken = data
                 }
+                else{
+                    console.log("refresh_token is null and trying to get from database :"+clientId);
+                     const tokenObj =await TokenModel.findOne({"client_id":"D417871336714E0B87F9918848596B39"});
+                     if(tokenObj != null){
+                        refreshToken = tokenObj.refresh_token;
+                     }else{
+                        res.status =500
+                         res.send(JSON.stringify({"message":"Error occur while creating token"}));
+                     }
+                }
+                console.log("Invoking token generation since token is expired. refresh_token :"+refreshToken);
                 return axios.post(url, {
                     'grant_type': 'refresh_token',
                     'refresh_token': refreshToken,
@@ -81,17 +94,31 @@ router.get('/invoice', async (req, res) => {
                         console.log("Error occur while generating token " + response);
                         res.send(response);
                     }
-                    memcached.set('token', response.data.access_token, 1680, function (err) {
+                    memcached.set('token', response.data.access_token, 400, function (err) {
                         console.log("Writing accessToken to memcached :"+response.data.access_token);
                         if (err) {
                             console.log("cache updating failed :");
                         };
                     });
-                    memcached.set('refreshToken', response.data.refresh_token, 4000, function (err) {
+                    memcached.set('refreshToken', response.data.refresh_token, 120, function (err) {
                         console.log("Writing refreshToken to memcached :"+response.data.refresh_token);
                         if (err) {
                             console.log("cache updating failed :");
                         };
+                    });
+                    const tokenModel = new TokenModel({
+                        clientId:clientId,
+                        refreshToken: response.data.refresh_token
+                    })
+                    const filter = {client_id :clientId}
+                    const update = {refresh_token :response.data.refresh_token}
+                    tokenModel.findOneAndUpdate(filter,update,{new : true}, function(err){
+                        if(err){
+                            console.log("Token write to db failed :"+err);
+                        }else{
+                            console.log("Token was successfully updated")
+                        }
+                        
                     });
                     accessToken = response.data.access_token;
                     console.log("Invoking xero invoices :" + email);
@@ -223,7 +250,7 @@ router.get('/paylink', async (req, res) => {
                             console.log("cache updating failed :");
                         };
                     });
-                    accessToken = response.data;
+                    accessToken = response.data.access_token;
                     console.log("Invoking paylink :" + email);
                     axios.get(`https://api.xero.com/api.xro/2.0/Invoices/${invoiceId}/OnlineInvoice`, {
                         headers: {
