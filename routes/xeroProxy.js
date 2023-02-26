@@ -106,13 +106,13 @@ router.get('/invoice', async (req, res) => {
                             console.log("cache updating failed :");
                         };
                     });
-                    const tokenModel = new TokenModel({
-                        clientId:clientId,
-                        refreshToken: response.data.refresh_token
-                    })
+                    // const tokenModel = new TokenModel({
+                    //     clientId:clientId,
+                    //     refreshToken: response.data.refresh_token
+                    // })
                     const filter = {client_id :clientId}
                     const update = {refresh_token :response.data.refresh_token}
-                    tokenModel.findOneAndUpdate(filter,update,{new : true}, function(err){
+                    TokenModel.findOneAndUpdate(filter,update,{new : true}, function(err){
                         if(err){
                             console.log("Token write to db failed :"+err);
                         }else{
