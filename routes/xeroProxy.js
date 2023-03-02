@@ -34,7 +34,7 @@ router.get('/invoice', async (req, res) => {
                     } else {
                         contactId = response.data.Contacts[0].ContactID;
                         console.log("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
-                        axios.get(`https://api.xero.com/api.xro/2.0/Invoices?ContactIDs=${contactId}`, {
+                        axios.get(`https://api.xero.com/api.xro/2.0/Invoices?where=Type=="ACCREC"&ContactIDs=${contactId}`, {
                             headers: {
                                 'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
                                 'Authorization': `Bearer ${accessToken}`,
