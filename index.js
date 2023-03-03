@@ -7,6 +7,8 @@ app.use(cors());
 const axios = require('axios');
 var Memcached = require('memcached');
 var memcached = new Memcached();
+const cron = require("node-cron");
+const lib = require("./services/scheduleService");
 
 const mongoString = process.env.DATABASE_URL
 
@@ -28,6 +30,12 @@ database.on('error', (error) => {
 database.once('connected', () => {
     console.log('Database Connected');
 })
+
+cron.schedule("* * * */30 * *", function () {
+    console.log("running a task every 60 seconds");
+    lib.updateRefeshToken();
+    
+});
 
 app.use(express.json());
 
