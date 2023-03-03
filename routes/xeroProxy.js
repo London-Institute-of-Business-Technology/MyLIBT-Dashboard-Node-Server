@@ -29,8 +29,8 @@ router.get('/invoice', async (req, res) => {
             })
                 .then(function (response) {
                     if (response == undefined && response == null && response.data == undefined && response.data.Contacts[0] == undefined) {
-                        res.status = 204
-                        res.send(JSON.stringify({ "message": "No Contact/s available for user :" + email }));
+                        res.status = 404;
+                        res.send(JSON.stringify({ "message": "CONTACT" }));
                     } else {
                         contactId = response.data.Contacts[0].ContactID;
                         console.log("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
@@ -43,8 +43,8 @@ router.get('/invoice', async (req, res) => {
                         })
                             .then(function (result) {
                                 if (result == undefined && result == null) {
-                                    res.status = 204
-                                    res.send(JSON.stringify({ "message": "No Contacts for request invoice" }));
+                                    res.status = 404
+                                    res.send(JSON.stringify({ "message": "INVOICE" }));
                                 } else {
                                     res.status = 200;
                                     res.send(JSON.stringify(result.data));
