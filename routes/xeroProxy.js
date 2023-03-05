@@ -30,7 +30,7 @@ router.get('/invoice', async (req, res) => {
                 .then(function (response) {
                     if (response == undefined && response == null && response.data == undefined && response.data.Contacts[0] == undefined) {
                         res.status = 404;
-                        res.send(JSON.stringify({ "message": "CONTACT" }));
+                        res.send(JSON.stringify({ "message": "NO_CONTACT" }));
                     } else {
                         contactId = response.data.Contacts[0].ContactID;
                         console.log("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
@@ -43,8 +43,8 @@ router.get('/invoice', async (req, res) => {
                         })
                             .then(function (result) {
                                 if (result == undefined && result == null) {
-                                    res.status = 404
-                                    res.send(JSON.stringify({ "message": "INVOICE" }));
+                                    res.status = 404;
+                                    res.send(JSON.stringify({ "message": "NO_INVOICE" }));
                                 } else {
                                     res.status = 200;
                                     res.send(JSON.stringify(result.data));
@@ -71,7 +71,7 @@ router.get('/invoice', async (req, res) => {
                     if (tokenObj != null) {
                         refreshToken = tokenObj.refresh_token;
                     } else {
-                        res.status = 500
+                        res.status = 500;
                         res.send(JSON.stringify({ "message": "Error occur while creating token" }));
                     }
                 }
@@ -126,8 +126,8 @@ router.get('/invoice', async (req, res) => {
                             .then(function (response) {
                                 // console.log(response.data.Contacts[0].ContactID);
                                 if (response == undefined && response == null && response.data == undefined && response.data.Contacts[0] == undefined) {
-                                    res.status = 204
-                                    res.send(JSON.stringify({ "message": "No Invoice/s available " }));
+                                    res.status = 404
+                                    res.send(JSON.stringify({ "message": "NO_CONTACT" }));
                                 } else {
                                     contactId = response.data.Contacts[0].ContactID;
                                     axios.get(`https://api.xero.com/api.xro/2.0/Invoices?where=Type=="ACCREC"&ContactIDs=${contactId}`, {
@@ -139,8 +139,8 @@ router.get('/invoice', async (req, res) => {
                                     })
                                         .then(function (result) {
                                             if (result == undefined && result == null) {
-                                                res.status = 204
-                                                res.send(JSON.stringify({ "message": "No Contacts for request invoice" }));
+                                                res.status = 404;
+                                                res.send(JSON.stringify({ "message": "NO_INVOICE" }));
                                             } else {
                                                 res.status = 200;
                                                 res.send(JSON.stringify(result.data));
