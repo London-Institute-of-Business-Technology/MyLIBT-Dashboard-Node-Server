@@ -26,7 +26,7 @@ const axios = require('axios');
                         const update = { refresh_token: refreshToken }
                         Token.findOneAndUpdate(filter, update, { new: true }, function (err) {
                             if (err) {
-                                 console.log("Token write to db failed :" + err);
+                                 console.log("Token write to db failed due to :" + err);
                             } else {
                                 console.log("Token was successfully updated");
                             }
