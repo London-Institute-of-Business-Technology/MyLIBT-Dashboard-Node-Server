@@ -28,10 +28,12 @@ router.get('/invoice', async (req, res) => {
                 }
             })
                 .then(function (response) {
-                    if (response == undefined && response == null && response.data == undefined && response.data.Contacts[0] == undefined) {
-                        res.status = 404;
-                        res.send(JSON.stringify({ "message": "NO_CONTACT" }));
+                    console.log(response.data+"@@@@@@@@@@@@@@@@@@@@2 "+response.data.Contacts.length);
+                    if (response.data.Contacts.length == 0) {
+                        console.log("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii");
+                       res.status(404).send(JSON.stringify({ "message": "NO_CONTACT" }));
                     } else {
+                        console.log("NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN")
                         contactId = response.data.Contacts[0].ContactID;
                         console.log("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
                         axios.get(`https://api.xero.com/api.xro/2.0/Invoices?where=Type=="ACCREC"&ContactIDs=${contactId}`, {
@@ -43,21 +45,21 @@ router.get('/invoice', async (req, res) => {
                         })
                             .then(function (result) {
                                 if (result == undefined && result == null) {
-                                    res.status = 404;
-                                    res.send(JSON.stringify({ "message": "NO_INVOICE" }));
+                                    res.status(404).send(JSON.stringify({ "message": "NO_INVOICE" }));
                                 } else {
-                                    res.status = 200;
-                                    res.send(JSON.stringify(result.data));
+                                    res.status(200).send(JSON.stringify(result.data));
                                 }
                             })
                             .catch(function (err) {
                                 console.log("Error occur while reading contacts :" + err);
+                                res.status(500).send(JSON.stringify({ "message": "INTERNAL SERVER EROOR" }));
                             })
                     }
                 })
-                .catch(function (error) {
-                    console.log("Error occur while reading invoice :" + error);
-                });
+                 .catch(function (error) {
+                    console.log(" iiiiiii Error occur while reading invoice :" + JSON.stringify(error));
+                    res.status(500).send(JSON.stringify({ "message": "INTERNAL SERVER EROOR" }));
+                 });
         } else {
             memcached.get('refreshToken', async function (err, data) {
                 console.log("Extracting refresh_token from memcached :" + JSON.stringify(data));
@@ -71,8 +73,7 @@ router.get('/invoice', async (req, res) => {
                     if (tokenObj != null) {
                         refreshToken = tokenObj.refresh_token;
                     } else {
-                        res.status = 500;
-                        res.send(JSON.stringify({ "message": "Error occur while creating token" }));
+                        res.status(500).send(JSON.stringify({ "message": "Error occur while creating token" }));
                     }
                 }
                 console.log("Invoking token generation since token is expired. refresh_token :" + refreshToken);
@@ -90,7 +91,7 @@ router.get('/invoice', async (req, res) => {
                         console.log("Token generated :" + JSON.stringify(response.data));
                         if (response.status != 200) {
                             console.log("Error occur while generating token " + response);
-                            res.send(response);
+                            res.status(500).send(JSON.stringify({ "message": "INTERNAL SERVER EROOR" }));
                         }
                         memcached.set('token', response.data.access_token, 400, function (err) {
                             console.log("Writing accessToken to memcached :" + response.data.access_token);
@@ -124,10 +125,10 @@ router.get('/invoice', async (req, res) => {
                             }
                         })
                             .then(function (response) {
-                                // console.log(response.data.Contacts[0].ContactID);
-                                if (response == undefined && response == null && response.data == undefined && response.data.Contacts[0] == undefined) {
-                                    res.status = 404
-                                    res.send(JSON.stringify({ "message": "NO_CONTACT" }));
+                                 console.log(response.data +">>>>>>>>>>>>>>"+response.data.Contacts.length);
+                                if (response.data.Contacts.length == 0) {
+                                    console.log("llllllllllllllllllllllllllllllllllllllllllllllllllll")
+                                    res.status(404).send(JSON.stringify({ "message": "NO_CONTACT" }));
                                 } else {
                                     contactId = response.data.Contacts[0].ContactID;
                                     axios.get(`https://api.xero.com/api.xro/2.0/Invoices?where=Type=="ACCREC"&ContactIDs=${contactId}`, {
@@ -139,24 +140,26 @@ router.get('/invoice', async (req, res) => {
                                     })
                                         .then(function (result) {
                                             if (result == undefined && result == null) {
-                                                res.status = 404;
-                                                res.send(JSON.stringify({ "message": "NO_INVOICE" }));
+                                                // res.status = 404;
+                                                res.status(404).send(JSON.stringify({ "message": "NO_INVOICE" }));
                                             } else {
-                                                res.status = 200;
-                                                res.send(JSON.stringify(result.data));
+                                                res.status(200).send(JSON.stringify(result.data));
                                             }
                                         })
                                         .catch(function (err) {
                                             console.log("Error occur while reading contacts :" + err);
+                                            res.status(404).send(JSON.stringify({ "message": "INTERNAL SERVER EROOR" }));
                                         })
                                 }
                             })
                             .catch(function (error) {
                                 console.log("Error occur while reading invoice :" + error);
+                                res.status(500).send(JSON.stringify({ "message": "INTERNAL SERVER EROOR" }));          
                             });
                     })
                     .catch(function (error) {
-                        console.log("Error occur while generating token :" + error);
+                        console.log(" RRRR Error occur while generating token :" + error);
+                        res.status(500).send(JSON.stringify({ "message": "INTERNAL SERVER EROOR" }));
                     })
             })
         }
