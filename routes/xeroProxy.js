@@ -45,7 +45,7 @@ router.get('/invoice', async (req, res) => {
                         })
                             .then(function (result) {
                                 if (result == undefined && result == null) {
-                                    res.status(404).send(JSON.stringify({ "message": "NO_INVOICE" }));
+                                    res.status(406).send(JSON.stringify({ "message": "NO_INVOICE" }));
                                 } else {
                                     res.status(200).send(JSON.stringify(result.data));
                                 }
@@ -141,7 +141,7 @@ router.get('/invoice', async (req, res) => {
                                         .then(function (result) {
                                             if (result == undefined && result == null) {
                                                 // res.status = 404;
-                                                res.status(404).send(JSON.stringify({ "message": "NO_INVOICE" }));
+                                                res.status(406).send(JSON.stringify({ "message": "NO_INVOICE" }));
                                             } else {
                                                 res.status(200).send(JSON.stringify(result.data));
                                             }
