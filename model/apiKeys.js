@@ -14,4 +14,4 @@ const apiSchema = new mongoose.Schema({
 
 })
 apiSchema.set("timestamps", true);
-module.exports = mongoose.model('apikeys', apiSchema)
+module.exports = mongoose.model('apiKeys', apiSchema)
