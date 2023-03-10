@@ -9,6 +9,8 @@ var Memcached = require('memcached');
 var memcached = new Memcached();
 const cron = require("node-cron");
 const lib = require("./services/scheduleService");
+const logger = require('./services/loggerService');
+const expressPinoLogger = require('express-pino-logger');
 
 
 
@@ -40,6 +42,13 @@ cron.schedule("* * * */30 * *", function () {
 });
 
 app.use(express.json());
+
+const loggerMidlleware = expressPinoLogger({
+    logger: logger,
+    autoLogging: true,
+  });
+  
+  app.use(loggerMidlleware);
 
 app.listen(3000, () => {
     console.log(`Server Started at ${3000}`)

@@ -4,13 +4,14 @@ const axios = require('axios');
 var Memcached = require('memcached');
 var memcached = new Memcached('localhost:11211');
 const TokenModel = require('../model/token');
+const log = require('../services/loggerService');
 
 router.get('/invoice', async (req, res) => {
     var accessToken = '';
     const { email } = req.query;
 
     memcached.get('token', async function (err, data) {
-        console.log("Recevied ACCESS_TOKEN from memcached : " + data);
+        log.info("Recevied ACCESS_TOKEN from memcached : " + data);
         if(data != undefined && data != null){
             accessToken= data;
             execute(email,accessToken,res);
@@ -29,9 +30,9 @@ async function generateAccessToken(email,data){
     const clientId = 'D417871336714E0B87F9918848596B39';
     const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
     var refreshToken='';
-    console.log("ACCESS_TOKEN is null. Trying to generate ACCESS_TOKEN from REFRESH_TOKEN. user :" + email);
+    log.info("ACCESS_TOKEN is null. Trying to generate ACCESS_TOKEN from REFRESH_TOKEN. user :" + email);
         if (data != undefined && data != null) {
-            console.log("Recevied REFRESH_TOKEN from memcached : " + data);
+            log.info("Recevied REFRESH_TOKEN from memcached : " + data);
             refreshToken = data
         }
         else {
@@ -39,7 +40,7 @@ async function generateAccessToken(email,data){
             if (tokenObj != null) {
                 refreshToken = tokenObj.refresh_token;
             } else {
-                console.log("Error occur while retrieving REFRESH_TOKEN from db. user :"+email +" clientId :" + clientId);
+                log.info("Error occur while retrieving REFRESH_TOKEN from db. user :"+email +" clientId :" + clientId);
                 res.status(500).send({"message": "Retrieving REFRESH_TOKEN from db failed"});
             }
             return axios.post(url, {
@@ -53,31 +54,30 @@ async function generateAccessToken(email,data){
             }
             )
             .then(response => {
-                console.log("ACCESS_TOKEN generated :" + JSON.stringify(response.data));
+                // log.info("ACCESS_TOKEN generated :" + JSON.stringify(response.data));
                 if (response.status != 200) {
-                    console.log("Error occur while generating ACCESS_TOKEN " + response);
+                    log.error("Error occur while generating ACCESS_TOKEN " + response);
                     res.status(500).send({"message": "ACCESS_TOKEN generation failed" });
                 }
-                memcached.set('token', response.data.access_token, 400, function (err) {
-                    console.log("Writing ACCESS_TOKEN to memcached :");
+                memcached.set('token', response.data.access_token, 60, function (err) {
+                    log.info("Writing ACCESS_TOKEN to memcached :");
                     if (err) {
-                        console.log("FAILED : Write ACCESS_TOKEN to memcached");
+                        log.error("FAILED : Write ACCESS_TOKEN to memcached");
                     };
                 });
                 memcached.set('refreshToken', response.data.refresh_token, 120, function (err) {
-                    console.log("Writing REFRESH_TOKEN to memcached :");
+                    log.info("Writing REFRESH_TOKEN to memcached :");
                     if (err) {
-                        console.log("FAILED : Write REFRESH_TOKEN to memcached");
+                        log.error("FAILED : Write REFRESH_TOKEN to memcached");
                     };
                 });
                 const filter = { client_id: "D417871336714E0B87F9918848596B39" }
                 const update = { refresh_token: response.data.refresh_token }
                     TokenModel.findOneAndUpdate(filter, update, { new: true }, function (err) {
                         if (err) {
-                            console.log("FAILED : Write REFRESH_TOKEN to db :" + err);
+                            log.error("FAILED : Write REFRESH_TOKEN to db :" + err);
                         } 
                     });
-                    console.log("###################################")
                     return response.data.access_token;
             })
         }
@@ -85,7 +85,7 @@ async function generateAccessToken(email,data){
 }
 
 async function execute(email,accessToken,res){
-    console.log("Invoking CONTACTS api in XERO. user :" + email +" ACCESS_TOKEN :"+accessToken);
+    log.info("Invoking CONTACTS api in XERO. user :" + email +" ACCESS_TOKEN :"+accessToken);
             axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
                 headers: {
                     'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
@@ -95,11 +95,11 @@ async function execute(email,accessToken,res){
             })
                 .then(function (response) {
                     if (response.data.Contacts.length == 0) {
-                        console.log("No Contacts found from xero. user :"+email);
+                        log.info("No Contacts found from xero. user :"+email);
                         res.status(404).send({"message":"NO_CONTACT"});
                     } else {
                         contactId = response.data.Contacts[0].ContactID;
-                        console.log("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
+                        log.info("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
                         axios.get(`https://api.xero.com/api.xro/2.0/Invoices?where=Type=="ACCREC"&ContactIDs=${contactId}`, {
                             headers: {
                                 'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
@@ -109,20 +109,20 @@ async function execute(email,accessToken,res){
                         })
                             .then(function (result) {
                                 if (result == undefined && result == null) {
-                                    console.log("No Invoices found from xero. user :"+email +", contactId :"+contactId);
+                                    log.info("No Invoices found from xero. user :"+email +", contactId :"+contactId);
                                     res.status(404).send({ "message": "NO_INVOICE" });
                                 } else {
                                     res.status(200).send(result.data);
                                 }
                             })
                             .catch(function (err) {
-                                console.log("Error occur while reading Invoices :" + err);
+                                log.error("Error occur while reading Invoices :" + err);
                                 res.status(500).send({ "message": "Error occur while reading Invoices" });
                             })
                     }
                 })
                  .catch(function (error) {
-                    console.log("Error occur while reading contacts :" + error);
+                    log.error("Error occur while reading contacts :" + error);
                     res.status(500).send({ "message": "Error occur while reading contacts" });
                  });
 }
@@ -140,10 +140,10 @@ router.get('/paylink', async (req, res) => {
     const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
 
     memcached.get('token', function (err, data) {
-        console.log("Token in memcached : " + data);
+        log.info("Token in memcached : " + data);
         if (data != undefined && data != null) {
             accessToken = data;
-            console.log("Invoking OnlineInvoice api in XERO. invoiceId :" + invoiceId);
+            log.info("Invoking OnlineInvoice api in XERO. invoiceId :" + invoiceId);
             axios.get(`https://api.xero.com/api.xro/2.0/Invoices/${invoiceId}/OnlineInvoice`, {
                 headers: {
                     'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
@@ -152,21 +152,21 @@ router.get('/paylink', async (req, res) => {
                 }
             })
                 .then(function (response) {
-                    console.log(response.data);
+                    log.info(response.data);
                     res.send(JSON.stringify(response.data));
                 })
                 .catch(function (error) {
-                    console.log("Error occur while reading OnlineInvoice :" + error);
+                    log.info("Error occur while reading OnlineInvoice :" + error);
                 });
         } else {
             memcached.get('refreshToken', async function (err, data) {
-                console.log("Extracting refresh_token from memcached :" + JSON.stringify(data));
+                log.info("Extracting refresh_token from memcached :" + JSON.stringify(data));
                 if (data != undefined && data != null) {
-                    console.log("refreshToken from memcached :" + data);
+                    log.info("refreshToken from memcached :" + data);
                     refreshToken = data
                 }
                 else {
-                    console.log("refresh_token is null and trying to get from database :" + clientId);
+                    log.info("refresh_token is null and trying to get from database :" + clientId);
                     const tokenObj = await TokenModel.findOne({ "client_id": "D417871336714E0B87F9918848596B39" });
                     if (tokenObj != null) {
                         refreshToken = tokenObj.refresh_token;
@@ -175,7 +175,7 @@ router.get('/paylink', async (req, res) => {
                         res.send(JSON.stringify({ "message": "Error occur while creating token" }));
                     }
                 }
-                console.log("Invoking token generation since token is expired. refresh_token :" + refreshToken);
+                log.info("Invoking token generation since token is expired. refresh_token :" + refreshToken);
                 return axios.post(url, {
                     'grant_type': 'refresh_token',
                     'refresh_token': refreshToken,
@@ -187,35 +187,35 @@ router.get('/paylink', async (req, res) => {
                     }
                 )
                     .then(response => {
-                        console.log("Token generated :" + JSON.stringify(response.data));
+                        log.info("Token generated :" + JSON.stringify(response.data));
                         if (response.status != 200) {
-                            console.log("Error occur while generating token " + response);
+                            log.info("Error occur while generating token " + response);
                             res.send(response);
                         }
                         memcached.set('token', response.data.access_token, 400, function (err) {
-                            console.log("Writing accessToken to memcached :" + response.data.access_token);
+                            log.info("Writing accessToken to memcached :" + response.data.access_token);
                             if (err) {
-                                console.log("cache updating failed :");
+                                log.info("cache updating failed :");
                             };
                         });
                         memcached.set('refreshToken', response.data.refresh_token, 120, function (err) {
-                            console.log("Writing refreshToken to memcached :" + response.data.refresh_token);
+                            log.info("Writing refreshToken to memcached :" + response.data.refresh_token);
                             if (err) {
-                                console.log("cache updating failed :");
+                                log.info("cache updating failed :");
                             };
                         });
                         const filter = { client_id: clientId }
                         const update = { refresh_token: response.data.refresh_token }
                         TokenModel.findOneAndUpdate(filter, update, { new: true }, function (err) {
                             if (err) {
-                                console.log("Token write to db failed :" + err);
+                                log.info("Token write to db failed :" + err);
                             } else {
-                                console.log("Token was successfully updated")
+                                log.info("Token was successfully updated")
                             }
 
                         });
                         accessToken = response.data.access_token;
-                        console.log("Invoking xero OnlineInvoice :" + email);
+                        log.info("Invoking xero OnlineInvoice :" + email);
                         axios.get(`https://api.xero.com/api.xro/2.0/Invoices/${invoiceId}/OnlineInvoice`, {
                             headers: {
                                 'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
@@ -224,15 +224,15 @@ router.get('/paylink', async (req, res) => {
                             }
                         })
                             .then(function (response) {
-                                console.log(response.data);
+                                log.info(response.data);
                                 res.send(JSON.stringify(response.data));
                             })
                             .catch(function (error) {
-                                console.log("Error occur while reading OnlineInvoice :" + error);
+                                log.info("Error occur while reading OnlineInvoice :" + error);
                             });
                     })
                     .catch(function (error) {
-                        console.log("Error occur while generating token :" + error);
+                        log.info("Error occur while generating token :" + error);
                     })
             })
         }
