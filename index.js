@@ -12,8 +12,6 @@ const lib = require("./services/scheduleService");
 const logger = require('./services/loggerService');
 const expressPinoLogger = require('express-pino-logger');
 
-
-
 const mongoString = process.env.DATABASE_URL
 
 memcached.connect('localhost:11211', function (err, conn) {
