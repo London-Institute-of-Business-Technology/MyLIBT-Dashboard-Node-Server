@@ -7,7 +7,7 @@ const { Configuration, OpenAIApi } = require("openai");
 
 openAI.post("/", async (req, res) => {
     //const { prompt } = JSON.stringify(req.body.prompt);
-    const key =await  apiKey.findOne({ "api": "openai" });
+    const key = await apiKey.findOne({ "api": "openai" });
     console.log(key);
     const configuration = new Configuration({
         apiKey: key.key,
@@ -17,9 +17,9 @@ openAI.post("/", async (req, res) => {
         model: "text-davinci-003",
         max_tokens: 512,
         temperature: 0,
-        prompt: `Give 3 recomended books for ${JSON.stringify(req.body.prompt)} with Amazon buy links. Convert the result to JSON and put into an array`,
+        prompt: `Give 5 recomended books for ${JSON.stringify(req.body.prompt)} with Amazon buy links. Convert the result to JSON and put into an array`,
     });
-     res.send(completion.data.choices[0].text);
+    res.send(completion.data.choices[0].text);
 });
 
 module.exports = openAI;
