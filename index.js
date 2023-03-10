@@ -55,7 +55,9 @@ app.listen(3000, () => {
 })
 
 const xero = require('./routes/xeroProxy');
-const openAI = require('./routes/openAI')
+const openAI = require('./routes/openAI');
+const brightcamp = require('./routes/brightcamp');
 
 app.use('/api/xero', xero);
 app.use('/api/openAI', openAI);
+app.use('/api/brightcamp', brightcamp);
