@@ -12,6 +12,11 @@ const lib = require("./services/scheduleService");
 const logger = require('./services/loggerService');
 const expressPinoLogger = require('express-pino-logger');
 
+
+app.use(cors({
+    origin: '*'
+}));
+
 const mongoString = process.env.DATABASE_URL
 
 memcached.connect('localhost:11211', function (err, conn) {
@@ -44,9 +49,9 @@ app.use(express.json());
 const loggerMidlleware = expressPinoLogger({
     logger: logger,
     autoLogging: true,
-  });
-  
-  app.use(loggerMidlleware);
+});
+
+app.use(loggerMidlleware);
 
 app.listen(3000, () => {
     console.log(`Server Started at ${3000}`)
