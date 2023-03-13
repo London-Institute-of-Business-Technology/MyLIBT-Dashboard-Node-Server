@@ -9,7 +9,6 @@ const { Configuration, OpenAIApi } = require("openai");
 openAI.post("/", async (req, res) => {
     //const { prompt } = JSON.stringify(req.body.prompt);
     const key = await apiKey.findOne({ "api": "openai" });
-    log.info(key);
     const configuration = new Configuration({
         apiKey: key.key,
     });
