@@ -13,9 +13,9 @@ const logger = require('./services/loggerService');
 const expressPinoLogger = require('express-pino-logger');
 
 
-app.use(cors({
-    origin: '*'
-}));
+// app.use(cors({
+//     origin: '*'
+// }));
 
 const mongoString = process.env.DATABASE_URL
 
