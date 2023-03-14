@@ -12,52 +12,52 @@ router.get('/invoice', async (req, res) => {
 
     memcached.get('token', async function (err, data) {
         log.info("Recevied ACCESS_TOKEN from memcached : " + data);
-        if(data != undefined && data != null){
-            accessToken= data;
-            execute(email,accessToken,res);
-        }else{
+        if (data != undefined && data != null) {
+            accessToken = data;
+            execute(email, accessToken, res);
+        } else {
             memcached.get('refreshToken', async function (err, data) {
-                accessToken =await generateAccessToken(email,data);
-                execute(email,accessToken,res);
+                accessToken = await generateAccessToken(email, data);
+                execute(email, accessToken, res);
             });
-            
+
         }
     })
 });
 
-async function generateAccessToken(email,data){
+async function generateAccessToken(email, data) {
     const url = 'https://identity.xero.com/connect/token';
     const clientId = 'D417871336714E0B87F9918848596B39';
     const clientSecret = 'x5pn2znr_vdng_Bir17asHzPxnbume-LGPDwbRm6_P5T7E39';
-    var refreshToken='';
+    var refreshToken = '';
     log.info("ACCESS_TOKEN is null. Trying to generate ACCESS_TOKEN from REFRESH_TOKEN. user :" + email);
-        if (data != undefined && data != null) {
-            log.info("Recevied REFRESH_TOKEN from memcached : " + data);
-            refreshToken = data
+    if (data != undefined && data != null) {
+        log.info("Recevied REFRESH_TOKEN from memcached : " + data);
+        refreshToken = data
+    }
+    else {
+        const tokenObj = await TokenModel.findOne({ "client_id": clientId });
+        if (tokenObj != null) {
+            refreshToken = tokenObj.refresh_token;
+        } else {
+            log.info("Error occur while retrieving REFRESH_TOKEN from db. user :" + email + " clientId :" + clientId);
+            res.status(500).send({ "message": "Retrieving REFRESH_TOKEN from db failed" });
         }
-        else {
-            const tokenObj = await TokenModel.findOne({ "client_id": clientId });
-            if (tokenObj != null) {
-                refreshToken = tokenObj.refresh_token;
-            } else {
-                log.info("Error occur while retrieving REFRESH_TOKEN from db. user :"+email +" clientId :" + clientId);
-                res.status(500).send({"message": "Retrieving REFRESH_TOKEN from db failed"});
-            }
-            return axios.post(url, {
-                'grant_type': 'refresh_token',
-                'refresh_token': refreshToken,
-                'client_id': clientId,
-                'client_secret': clientSecret
-            },
+        return axios.post(url, {
+            'grant_type': 'refresh_token',
+            'refresh_token': refreshToken,
+            'client_id': clientId,
+            'client_secret': clientSecret
+        },
             {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }               
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             }
-            )
+        )
             .then(response => {
                 // log.info("ACCESS_TOKEN generated :" + JSON.stringify(response.data));
                 if (response.status != 200) {
                     log.error("Error occur while generating ACCESS_TOKEN " + response);
-                    res.status(500).send({"message": "ACCESS_TOKEN generation failed" });
+                    res.status(500).send({ "message": "ACCESS_TOKEN generation failed" });
                 }
                 memcached.set('token', response.data.access_token, 60, function (err) {
                     log.info("Writing ACCESS_TOKEN to memcached :");
@@ -73,58 +73,58 @@ async function generateAccessToken(email,data){
                 });
                 const filter = { client_id: "D417871336714E0B87F9918848596B39" }
                 const update = { refresh_token: response.data.refresh_token }
-                    TokenModel.findOneAndUpdate(filter, update, { new: true }, function (err) {
-                        if (err) {
-                            log.error("FAILED : Write REFRESH_TOKEN to db :" + err);
-                        } 
-                    });
-                    return response.data.access_token;
+                TokenModel.findOneAndUpdate(filter, update, { new: true }, function (err) {
+                    if (err) {
+                        log.error("FAILED : Write REFRESH_TOKEN to db :" + err);
+                    }
+                });
+                return response.data.access_token;
             })
-        }
+    }
 
 }
 
-async function execute(email,accessToken,res){
-    log.info("Invoking CONTACTS api in XERO. user :" + email +" ACCESS_TOKEN :"+accessToken);
-            axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
-                headers: {
-                    'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Access-Control-Allow-Origin': '*',
-                }
-            })
-                .then(function (response) {
-                    if (response.data.Contacts.length == 0) {
-                        log.info("No Contacts found from xero. user :"+email);
-                        res.status(404).send({"message":"NO_CONTACT"});
-                    } else {
-                        contactId = response.data.Contacts[0].ContactID;
-                        log.info("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
-                        axios.get(`https://api.xero.com/api.xro/2.0/Invoices?where=Type=="ACCREC"&ContactIDs=${contactId}`, {
-                            headers: {
-                                'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
-                                'Authorization': `Bearer ${accessToken}`,
-                                'Access-Control-Allow-Origin': '*',
-                            }
-                        })
-                            .then(function (result) {
-                                if (result == undefined && result == null) {
-                                    log.info("No Invoices found from xero. user :"+email +", contactId :"+contactId);
-                                    res.status(404).send({ "message": "NO_INVOICE" });
-                                } else {
-                                    res.status(200).send(result.data);
-                                }
-                            })
-                            .catch(function (err) {
-                                log.error("Error occur while reading Invoices :" + err);
-                                res.status(500).send({ "message": "Error occur while reading Invoices" });
-                            })
+async function execute(email, accessToken, res) {
+    log.info("Invoking CONTACTS api in XERO. user :" + email + " ACCESS_TOKEN :" + accessToken);
+    axios.get(`https://api.xero.com/api.xro/2.0/Contacts?where=EmailAddress="${email}"`, {
+        headers: {
+            'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
+            'Authorization': `Bearer ${accessToken}`,
+            'Access-Control-Allow-Origin': '*',
+        }
+    })
+        .then(function (response) {
+            if (response.data.Contacts.length == 0) {
+                log.info("No Contacts found from xero. user :" + email);
+                res.status(404).send({ "code": 404, "message": "NO_CONTACT" });
+            } else {
+                contactId = response.data.Contacts[0].ContactID;
+                log.info("Invoking INVOICE  api in XERO. user :" + email + " contactId :" + contactId);
+                axios.get(`https://api.xero.com/api.xro/2.0/Invoices?where=Type=="ACCREC"&ContactIDs=${contactId}`, {
+                    headers: {
+                        'xero-tenant-id': '0b0c445d-94c2-4c66-9468-caec5fdc5ce9',
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Access-Control-Allow-Origin': '*',
                     }
                 })
-                 .catch(function (error) {
-                    log.error("Error occur while reading contacts :" + error);
-                    res.status(500).send({ "message": "Error occur while reading contacts" });
-                 });
+                    .then(function (result) {
+                        if (result == undefined && result == null) {
+                            log.info("No Invoices found from xero. user :" + email + ", contactId :" + contactId);
+                            res.status(404).send({ "code": 404, "message": "NO_INVOICE" });
+                        } else {
+                            res.status(200).send(result.data);
+                        }
+                    })
+                    .catch(function (err) {
+                        log.error("Error occur while reading Invoices :" + err);
+                        res.status(500).send({ "code": 500, "message": "Error occur while reading Invoices" });
+                    })
+            }
+        })
+        .catch(function (error) {
+            log.error("Error occur while reading contacts :" + error);
+            res.status(500).send({ "message": "Error occur while reading contacts" });
+        });
 }
 
 
